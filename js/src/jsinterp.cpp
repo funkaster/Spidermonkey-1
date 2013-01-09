@@ -524,12 +524,14 @@ js::Execute(JSContext *cx, HandleScript script, JSObject &scopeChainArg, Value *
     if (!scopeChain)
         return false;
 
-    /* If we were handed a non-native object, complain bitterly. */
-    if (!scopeChain->isNative()) {
-        JS_ReportErrorNumber(cx, js_GetErrorMessage, NULL, JSMSG_NON_NATIVE_SCOPE);
-        return false;
-    }
-    JS_ASSERT(!scopeChain->getOps()->defineProperty);
+    /* Make sure the scope chain is sane. */
+#ifdef DEBUG
+    RawObject debugScope = scopeChain;
+    do {
+        assertSameCompartment(cx, debugScope);
+        JS_ASSERT_IF(!debugScope->enclosingScope(), debugScope->isGlobal());
+    } while ((debugScope = debugScope->enclosingScope()));
+#endif
 
     /* The VAROBJFIX option makes varObj == globalObj in global code. */
     if (!cx->hasRunOption(JSOPTION_VAROBJFIX)) {
